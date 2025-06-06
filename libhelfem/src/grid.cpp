@@ -16,8 +16,16 @@
 #include <helfem.h>
 
 arma::vec helfem::utils::get_grid(double rmax, int num_el, int igrid, double zexp) {
+  return get_grid(rmax, num_el, igrid, zexp, 0.0, 0.0);
+}
+
+arma::vec helfem::utils::get_grid(double rmax, int num_el, int igrid, double zexp, double r_pot_init, double r_pot_end) {
   // Boundary values
   arma::vec bval;
+  arma::vec bval1;
+  arma::vec bval2;
+  arma::vec bval3;
+  arma::vec bval_tmp;
 
   // Get boundary values
   switch (igrid) {
@@ -54,6 +62,23 @@ arma::vec helfem::utils::get_grid(double rmax, int num_el, int igrid, double zex
                                    0, std::pow(log(rmax + 1), 1.0 / zexp), num_el + 1),
                                zexp)) -
            arma::ones<arma::vec>(num_el + 1);
+    break;
+
+  // combination of generalized exponential and linear grids
+  case(5):
+    if (helfem::verbose)
+      printf("Using exponential grid, zexp = %e with linear grid at the potential with width shift_conf - conf_R = %e\n", zexp, r_pot_init - r_pot_end);
+    bval1 = arma::exp(arma::pow(arma::linspace<arma::vec>(
+				    0, std::pow(log(r_pot_init + 1), 1.0 / zexp), num_el + 1),
+                               zexp)) -
+            arma::ones<arma::vec>(num_el + 1);
+    bval2 = arma::linspace<arma::vec>(r_pot_init + (r_pot_end - r_pot_init) / (num_el + 1), r_pot_end - (r_pot_end - r_pot_init) / (num_el + 1), num_el + 1);
+    bval3 = arma::exp(arma::pow(arma::linspace<arma::vec>(
+				    std::pow(log(r_pot_end + 1), 1.0 / zexp), std::pow(log(rmax + 1), 1.0 / zexp), num_el + 1),
+                               zexp)) -
+            arma::ones<arma::vec>(num_el + 1);
+    bval_tmp = arma::join_cols(bval1, bval2);
+    bval = arma::join_cols(bval_tmp, bval3);
     break;
 
   default:
