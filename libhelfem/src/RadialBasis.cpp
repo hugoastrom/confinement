@@ -417,6 +417,17 @@ namespace helfem {
 	radial_bf = [this](const arma::vec & xq_, size_t iel_) { return this->get_bf(xq_, iel_); };
 	return fem.matrix_element(iel, radial_bf, radial_bf, xq, wq, r_exp);
       }
+
+      arma::mat RadialBasis::piecewise_confinement(size_t iel, double V, double r_init, double r_end) const {
+	std::function<double(double)> pot = [V, r_init, r_end](double r) {
+	  if(r<r_init || r>r_end)
+	    return 0.0;
+	  return V * std::pow(r, 2);
+	};
+	std::function<arma::mat(const arma::vec &, size_t)> radial_bf;
+	radial_bf = [this](const arma::vec & xq_, size_t iel_) { return this->get_bf(xq_, iel_); };
+	return fem.matrix_element(iel, radial_bf, radial_bf, xq, wq, pot);
+      }
       
       arma::mat RadialBasis::confinement_potential(size_t iel, int N, double r_0, int iconf, double V, double shift_pot) const {
 	// Attractive potential does not make sense for shift_pot != 0
@@ -452,10 +463,11 @@ namespace helfem {
 	  if(V<=0)
 	    throw std::logic_error("Can not have attractive Junquera potential!\n");
 	  return junq_confinement(iel, N, V, r_0, shift_pot);
+	} else if(iconf==5) {
+	  return piecewise_confinement(iel, V, shift_pot, r_0);
 	} else
 	  throw std::logic_error("Case not implemented!\n");
       }
-
 
       arma::mat RadialBasis::model_potential(const modelpotential::ModelPotential *model,
                                              size_t iel) const {
